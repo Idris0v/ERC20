@@ -9,6 +9,7 @@ describe("ERC20", function () {
   let owner: SignerWithAddress;
   let user1: SignerWithAddress;
   let user2: SignerWithAddress;
+  let minterRole = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('MINTER'));
 
   beforeEach(async () => {
     [owner, user1, user2] = await ethers.getSigners();
@@ -29,13 +30,19 @@ describe("ERC20", function () {
   });
 
   it("Should forbid to mint tokens if not the owner", async function () {
-    expect(erc20.connect(user1).mint(10)).to.be.revertedWith("You're not the owner");
+    expect(erc20.connect(user1).mint(10, user1.address)).to.be.reverted;
     expect(await erc20.totalSupply()).to.equal(ethers.BigNumber.from(0));
+  });
+
+  it("Should grant minter role and grantee be able to mint", async function () {
+    erc20.grantRole(minterRole, user1.address);
+    await erc20.connect(user1).mint(10, user1.address);
+    expect(await erc20.balanceOf(user1.address)).to.equal(ethers.BigNumber.from(10));
   });
 
   it("Should burn tokens", async function () {
     await mint();
-    const burnTx = await erc20.burn(10);
+    const burnTx = await erc20.burn(10, owner.address);
     await burnTx.wait();
     expect(await erc20.totalSupply()).to.equal(ethers.BigNumber.from(10));
   });
@@ -43,7 +50,7 @@ describe("ERC20", function () {
   it("Should forbid to burn tokens if not the owner", async function () {
     await mint();
 
-    expect(erc20.connect(user1).burn(10)).to.be.revertedWith("You're not the owner");
+    expect(erc20.connect(user1).burn(10, user1.address)).to.be.reverted;
     expect(await erc20.totalSupply()).to.equal(ethers.BigNumber.from(10));
   });
 
@@ -120,7 +127,7 @@ describe("ERC20", function () {
   });
 
   async function mint(amount: number = 10) {
-    const mintTx = await erc20.mint(amount);
+    const mintTx = await erc20.mint(amount, owner.address);
     await mintTx.wait();
   }
 });

@@ -3,7 +3,8 @@ import "@nomiclabs/hardhat-ethers";
 
 task('mint', 'Mint tokens')
     .addParam('amount', 'amount of tokens')
-    .setAction(async ({ amount }, { ethers }) => {
+    .addOptionalParam('to', 'address to mint to')
+    .setAction(async ({ amount, to }, { ethers }) => {
         if (!process.env.ERC20_ADDRESS) {
             throw new Error('process.env.ERC20_ADDRESS is not provided');
         }
@@ -12,6 +13,7 @@ task('mint', 'Mint tokens')
             "ERC20",
             process.env.ERC20_ADDRESS
         );
-        const tx = await erc20.mint(amount);
+        const [owner] = await ethers.getSigners();
+        const tx = await erc20.mint((Number(amount)*10**8).toString(), to || owner.address);
         await tx.wait();
     });

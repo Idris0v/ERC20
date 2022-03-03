@@ -1,10 +1,13 @@
-//SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.9;
 
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./IERC20.sol";
 
-contract ERC20 is IERC20 {
+contract ERC20 is IERC20, AccessControl {
+    bytes32 public constant MINTER = keccak256("MINTER");
+
     string public name;
     string public symbol;
     uint public totalSupply;
@@ -13,18 +16,12 @@ contract ERC20 is IERC20 {
     mapping(address => uint) public balanceOf;
     mapping(address => mapping(address => uint)) public allowance;
 
-    address private _owner;
-
     constructor(string memory _name, string memory _symbol) {
         name = _name;
         symbol = _symbol;
-        decimals = 18;
-        _owner = msg.sender;
-    }
-
-    modifier onlyOwner() {
-        require(msg.sender == _owner, "You're not the owner");
-        _;
+        decimals = 8;
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        grantRole(MINTER, msg.sender);
     }
 
     function transfer(address recipient, uint amount) external returns (bool) {
@@ -69,16 +66,16 @@ contract ERC20 is IERC20 {
         return true;
     }
 
-    function mint(uint amount) external onlyOwner returns (bool) {
-        balanceOf[_owner] += amount;
+    function mint(uint amount, address to) external onlyRole(MINTER) returns (bool) {
+        balanceOf[to] += amount;
         totalSupply += amount;
-        emit Transfer(address(0), _owner, amount);
+        emit Transfer(address(0), to, amount);
         return true;
     }
 
-    function burn(uint amount) external onlyOwner returns (bool) {
-        balanceOf[_owner] -= amount;
-        emit Transfer(_owner, address(0), amount);
+    function burn(uint amount, address from) external onlyRole(MINTER) returns (bool) {
+        balanceOf[from] -= amount;
+        emit Transfer(from, address(0), amount);
         return true;
     }
 }
